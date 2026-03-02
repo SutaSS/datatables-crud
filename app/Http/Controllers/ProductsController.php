@@ -2,63 +2,100 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class ProductsController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        return view('products.index');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            Product::create($validated);
+
+            DB::commit();
+
+            return redirect()->route('products.index')
+                ->with('success', 'Product created successfully.');
+
+        } catch (QueryException $e) {
+
+            DB::rollBack();
+
+            return back()->with('error', 'Database conflict occurred.');
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return back()->with('error', 'Unexpected error occurred.');
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(Product $product)
     {
-        //
+        return view('products.edit', compact('product'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(Request $request, Product $product)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $product->update($validated);
+
+            DB::commit();
+
+            return redirect()->route('products.index')
+                ->with('success', 'Product updated successfully.');
+
+        } catch (QueryException $e) {
+
+            DB::rollBack();
+
+            return back()->with('error', 'Update conflict detected.');
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return back()->with('error', 'Unexpected error occurred.');
+        }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(Product $product)
     {
-        //
-    }
+        try {
+            $product->delete();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+            return redirect()->route('products.index')
+                ->with('success', 'Product deleted successfully.');
+
+        } catch (\Exception $e) {
+
+            return back()->with('error', 'Failed to delete product.');
+        }
     }
 }
